@@ -4,13 +4,16 @@
             - the Active Directory Domain Controller (192.168.1.100, "hades.underworld")
             - any domain-joined workstation (the real Phase 6 pivot victim)
 
-    Installs / configures the Splunk Universal Forwarder and ships the Windows
-    Security + System event logs to the indexer as index=windows. This is what
-    makes the phished-credential pivot (4624/4625), Kerberos abuse (4768/4769/4771)
-    and failed-logon bursts visible - none of which the Linux forwarders can see.
+    On the Hades DC this ships TWO things:
+      - ACTIVE: the hMailServer SMTP log -> index=mail, which feeds the S3d
+        phishing-email alert (external sender delivering the phish). This is the
+        reason to run it for the live exercise.
+      - OPTIONAL / depth: the Windows Security + System event logs -> index=windows
+        for the disabled S6c/S7a/S7b alerts (the live pivot is SSH, so set
+        $ForwardMail only, and ignore the WinEventLog feeds unless you enable those).
 
-    PREREQUISITE: the indexer must have an index named "windows" and be receiving
-    on 9997 (setup-splunk-indexer.ps1 now creates it).
+    PREREQUISITE: the indexer must have indexes "mail" and "windows" and be
+    receiving on 9997 (setup-splunk-indexer.ps1 now creates both).
 
     Run in an ELEVATED (Administrator) PowerShell on EACH Windows host:
         powershell -ExecutionPolicy Bypass -File .\setup-forwarder-windows.ps1
@@ -22,10 +25,17 @@
 # ===================== EDIT THESE PER ENVIRONMENT =====================
 $SplunkIP   = "192.168.1.103"          # Splunk indexer IP
 $FwdPort    = "9997"                    # indexer receiving port
-$WinIndex   = "windows"                 # destination index (must exist on the indexer)
+$WinIndex   = "windows"                 # destination index for the WinEventLog feeds (optional/depth)
 $MsiPath    = ""                        # local path to splunkforwarder-*-x64-release.msi (blank = skip)
 $MsiUrl     = ""                        # OR a URL to download the MSI from (e.g. https://www.tafe.mst/splunkforwarder-...msi)
 $UFHome     = "C:\Program Files\SplunkUniversalForwarder"
+
+# --- hMailServer SMTP log (ACTIVE on the Hades DC - feeds the S3d phishing alert) ---
+$ForwardMail  = $true                                    # ship the hMailServer log (set $false on a workstation with no mail server)
+$HMailLogDir  = "C:\Program Files\hMailServer\Logs"      # hMailServer log folder (try (x86) if not here)
+$MailIndex    = "mail"                                    # destination index (create on the indexer)
+# NOTE: enable logging in hMailServer Administrator -> Settings -> Logging (tick Enabled + SMTP),
+#       or the log folder stays empty and S3d never fires.
 # =====================================================================
 
 $ErrorActionPreference = "Stop"
@@ -105,6 +115,19 @@ index = $WinIndex
 #index = $WinIndex
 #renderXml = false
 "@
+
+# hMailServer SMTP log - the ACTIVE feed for phishing detection (S3d)
+if ($ForwardMail) {
+    Say "Adding hMailServer log monitor ($HMailLogDir -> index=$MailIndex)"
+    $inputs += @"
+
+[monitor://$HMailLogDir\hmailserver_*.log]
+disabled = 0
+sourcetype = hmailserver
+index = $MailIndex
+"@
+}
+
 $localDir = Join-Path $UFHome "etc\system\local"
 New-Item -ItemType Directory -Force -Path $localDir | Out-Null
 Set-Content -Path (Join-Path $localDir "inputs.conf") -Value $inputs -Encoding ASCII
@@ -116,8 +139,9 @@ Say "Enabling boot-start + restarting"
 
 Write-Host "`n================= DONE (Windows host) =================" -ForegroundColor Green
 & $Splunk list forward-server 2>$null
-Write-Host "Host: $env:COMPUTERNAME  ->  index=$WinIndex  @  ${SplunkIP}:${FwdPort}"
-Write-Host "Verify on the indexer:  index=$WinIndex host=$env:COMPUTERNAME | stats count by sourcetype, EventCode"
+Write-Host "Host: $env:COMPUTERNAME  ->  @  ${SplunkIP}:${FwdPort}"
+Write-Host "Verify mail feed:  index=$MailIndex sourcetype=hmailserver | stats count by host"
+Write-Host "(ENABLE hMailServer logging first: Administrator -> Settings -> Logging -> Enabled + SMTP)"
 Write-Host "Run this on BOTH the DC (192.168.1.100) and the pivot workstation."
 Write-Host ""
 Write-Host "RECOMMENDED on the indexer: install the 'Splunk Add-on for Windows'"

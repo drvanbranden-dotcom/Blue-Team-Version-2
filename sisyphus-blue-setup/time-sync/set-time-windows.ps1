@@ -1,5 +1,5 @@
 <#
-    Project Sisyphus — Windows time sync.
+    Project Sisyphus - Windows time sync.
     Two modes:
       -AsMaster   : make THIS Windows box (the Splunk indexer 192.168.1.103) the
                     authoritative time source the whole lab syncs to. Recommended,

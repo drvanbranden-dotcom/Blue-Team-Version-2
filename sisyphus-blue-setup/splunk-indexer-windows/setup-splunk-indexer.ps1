@@ -12,7 +12,7 @@
 
 # ================= EDIT IF NEEDED =================
 $SplunkHome = "C:\Program Files\Splunk"
-$Indexes    = @("network", "web", "os", "windows")
+$Indexes    = @("network", "web", "os", "mail", "windows")
 
 # --- manual static IP for this Blue machine (the Splunk indexer) ---
 $SetStaticIP    = $false            # set to $true to APPLY the static IP below
@@ -30,7 +30,7 @@ if ($SetStaticIP) {
             -PrefixLength $PrefixLength -DefaultGateway $Gateway | Out-Null
     }
     Set-DnsClientServerAddress -InterfaceAlias $InterfaceAlias -ServerAddresses $DnsServer
-    Write-Host "[OK] Static IP applied. (This box is the clock master — run set-time-windows.ps1 -AsMaster.)" -ForegroundColor Green
+    Write-Host "[OK] Static IP applied. (This box is the clock master - run set-time-windows.ps1 -AsMaster.)" -ForegroundColor Green
 }
 
 $Splunk = Join-Path $SplunkHome "bin\splunk.exe"
@@ -42,9 +42,9 @@ if (-not (Test-Path $Splunk)) {
 # Splunk admin creds (used for the CLI calls). Format: admin:password
 $Cred = Read-Host "Enter Splunk admin credentials as user:password (e.g. admin:yourpass)"
 
-function Invoke-Splunk { param([string[]]$Args)
-    Write-Host "[*] splunk $($Args -join ' ')" -ForegroundColor Cyan
-    & $Splunk @Args -auth $Cred
+function Invoke-Splunk { param([string[]]$SplunkArgs)
+    Write-Host "[*] splunk $($SplunkArgs -join ' ')" -ForegroundColor Cyan
+    & $Splunk @SplunkArgs -auth $Cred
 }
 
 # --- 1. indexes ---

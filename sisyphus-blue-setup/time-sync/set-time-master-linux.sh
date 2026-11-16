@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Project Sisyphus — make THIS Linux host the single time master for the lab.
+# Project Sisyphus - make THIS Linux host the single time master for the lab.
 # Use this ONLY if you want a Linux box to be the clock source instead of the
 # Windows Splunk indexer (set-time-master-windows.ps1) or pfSense's NTP service.
 # Serves its own clock even with no upstream internet, so every machine agrees.

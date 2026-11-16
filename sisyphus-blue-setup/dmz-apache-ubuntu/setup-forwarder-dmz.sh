@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Project Sisyphus — Blue Team telemetry setup
+# Project Sisyphus - Blue Team telemetry setup
 # TARGET: DMZ / vulnerable Apache host (e.g. 10.1.1.10, "dmzUbuntu")
 # Installs the Splunk Universal Forwarder, points it at the indexer,
 # forwards Apache + OS logs, and loads the auditd file-watch rules.
@@ -18,27 +18,27 @@ UF_URL=""                                 # URL to splunkforwarder-*.tgz (e.g. h
 DOWNLOAD_USER=""                          # HTTP basic-auth user for UF_URL (blank = no auth). You'll be prompted for the password.
 APACHE_LOG_DIR="/opt/apache-2.4.49/logs"  # where access_log / error_log live. The red-team install_apache.sh
                                           #   builds to /opt/apache-2.4.49 (PREFIX), so logs are here. A manual
-                                          #   source build may use /usr/local/apache2/logs instead — auto-detected below.
+                                          #   source build may use /usr/local/apache2/logs instead - auto-detected below.
 APACHE_PREFIX="/opt/apache-2.4.49"        # Apache install root (htdocs + cgi-bin live here); used for read-watches.
 
 # --- static IP (manual addressing for the Blue machines) ---
 SET_STATIC_IP="false"                     # set to "true" to APPLY the static IP below (changes networking!)
-STATIC_IP="10.1.1.10"                     # this machine's assigned IP — DMZ Apache host (dmzUbuntu)
-PREFIX="28"                               # CIDR prefix → 10.1.1.0/28
+STATIC_IP="10.1.1.10"                     # this machine's assigned IP - DMZ Apache host (dmzUbuntu)
+PREFIX="28"                               # CIDR prefix -> 10.1.1.0/28
 GATEWAY="10.1.1.1"                        # pfSense DMZ interface
 DNS_SERVER="172.17.124.219"               # lab DNS (TAFE internal); used to reach www.tafe.mst
 IFACE=""                                  # network interface; blank = auto-detect the default route's NIC
 
 # --- clock sync (keeps log timestamps + alert windows aligned) ---
 SYNC_TIME="true"                          # sync this host's clock to the master below
-TIME_MASTER_IP="192.168.1.103"            # the single clock master (Splunk indexer) — must serve NTP (see time-sync/)
+TIME_MASTER_IP="192.168.1.103"            # the single clock master (Splunk indexer) - must serve NTP (see time-sync/)
 ### =============================================================
 
 SPLUNK_HOME="/opt/splunkforwarder"
 SPLUNK="$SPLUNK_HOME/bin/splunk"
 say(){ echo -e "\n[*] $*"; }
 
-# --- 0a. apply the manual static IP (optional — changes networking, may drop SSH) ---
+# --- 0a. apply the manual static IP (optional - changes networking, may drop SSH) ---
 if [[ "$SET_STATIC_IP" == "true" ]]; then
   IFACE="${IFACE:-$(ip -o -4 route show to default | awk '{print $5; exit}')}"
   say "Setting static IP ${STATIC_IP}/${PREFIX} on ${IFACE} (gw ${GATEWAY}, dns ${DNS_SERVER})"
@@ -56,7 +56,7 @@ network:
         addresses: [${DNS_SERVER}]
 EOF
   sudo chmod 600 /etc/netplan/60-sisyphus.yaml
-  sudo netplan apply || echo "WARNING: netplan apply failed — check /etc/netplan/60-sisyphus.yaml"
+  sudo netplan apply || echo "WARNING: netplan apply failed - check /etc/netplan/60-sisyphus.yaml"
 fi
 
 # --- 0b. sync the clock to the single master so log timestamps + alert windows align ---
@@ -73,7 +73,7 @@ fi
 
 # --- 0c. auto-detect the real Apache access_log so a wrong prefix can't mute index=web ---
 if [[ ! -f "${APACHE_LOG_DIR}/access_log" ]]; then
-  say "access_log not at ${APACHE_LOG_DIR} — searching common Apache prefixes..."
+  say "access_log not at ${APACHE_LOG_DIR} - searching common Apache prefixes..."
   FOUND="$(sudo find /opt/apache-* /usr/local/apache2 /var/log/apache2 /var/log/httpd -name access_log 2>/dev/null | head -n1 || true)"
   if [[ -n "$FOUND" ]]; then
     APACHE_LOG_DIR="$(dirname "$FOUND")"
@@ -106,7 +106,7 @@ if [[ ! -x "$SPLUNK" ]]; then
   say "Extracting $TGZ to /opt"
   sudo tar xzf "$TGZ" -C /opt
 else
-  say "Forwarder already installed at $SPLUNK_HOME — skipping download."
+  say "Forwarder already installed at $SPLUNK_HOME - skipping download."
 fi
 
 # --- 2. seed admin creds for a non-interactive first start ---
@@ -178,6 +178,6 @@ echo
 echo "================= DONE (DMZ Apache host) ================="
 sudo "$SPLUNK" list forward-server 2>/dev/null || true
 echo "auditd rules loaded:"
-sudo auditctl -l | grep zeus_ || echo "  (no zeus_ watches — check output above)"
+sudo auditctl -l | grep zeus_ || echo "  (no zeus_ watches - check output above)"
 echo "Verify on Splunk (${SPLUNK_IP}):  index=web OR index=os host=$(hostname)"
 echo "========================================================="

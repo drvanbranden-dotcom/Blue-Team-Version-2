@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Project Sisyphus — Blue Team telemetry setup
+# Project Sisyphus - Blue Team telemetry setup
 # TARGET: Internal pivot host = persephone @ 192.168.1.6 (the SSH pivot target
 #         the red playbook logs into). Run this ON that box. Confirmed 11/11/26.
 # Installs the Splunk Universal Forwarder, points it at the indexer,
@@ -18,22 +18,22 @@ DOWNLOAD_USER=""               # HTTP basic-auth user for UF_URL (blank = no aut
 
 # --- static IP (manual addressing for the Blue machines) ---
 SET_STATIC_IP="false"          # set to "true" to APPLY the static IP below (changes networking!)
-STATIC_IP="192.168.1.6"        # this machine's assigned IP — persephone (internal SSH pivot target)
-PREFIX="24"                    # CIDR prefix → 192.168.1.0/24
+STATIC_IP="192.168.1.6"        # this machine's assigned IP - persephone (internal SSH pivot target)
+PREFIX="24"                    # CIDR prefix -> 192.168.1.0/24
 GATEWAY="192.168.1.1"          # pfSense LAN interface
 DNS_SERVER="172.17.124.219"    # lab DNS (TAFE internal)
 IFACE=""                       # network interface; blank = auto-detect the default route's NIC
 
 # --- clock sync (keeps log timestamps + alert windows aligned) ---
 SYNC_TIME="true"               # sync this host's clock to the master below
-TIME_MASTER_IP="192.168.1.103" # the single clock master (Splunk indexer) — must serve NTP (see time-sync/)
+TIME_MASTER_IP="192.168.1.103" # the single clock master (Splunk indexer) - must serve NTP (see time-sync/)
 ### =============================================================
 
 SPLUNK_HOME="/opt/splunkforwarder"
 SPLUNK="$SPLUNK_HOME/bin/splunk"
 say(){ echo -e "\n[*] $*"; }
 
-# --- 0a. apply the manual static IP (optional — changes networking, may drop SSH) ---
+# --- 0a. apply the manual static IP (optional - changes networking, may drop SSH) ---
 if [[ "$SET_STATIC_IP" == "true" ]]; then
   IFACE="${IFACE:-$(ip -o -4 route show to default | awk '{print $5; exit}')}"
   say "Setting static IP ${STATIC_IP}/${PREFIX} on ${IFACE} (gw ${GATEWAY}, dns ${DNS_SERVER})"
@@ -51,7 +51,7 @@ network:
         addresses: [${DNS_SERVER}]
 EOF
   sudo chmod 600 /etc/netplan/60-sisyphus.yaml
-  sudo netplan apply || echo "WARNING: netplan apply failed — check /etc/netplan/60-sisyphus.yaml"
+  sudo netplan apply || echo "WARNING: netplan apply failed - check /etc/netplan/60-sisyphus.yaml"
 fi
 
 # --- 0b. sync the clock to the single master so log timestamps + alert windows align ---
@@ -87,7 +87,7 @@ if [[ ! -x "$SPLUNK" ]]; then
   say "Extracting $TGZ to /opt"
   sudo tar xzf "$TGZ" -C /opt
 else
-  say "Forwarder already installed at $SPLUNK_HOME — skipping download."
+  say "Forwarder already installed at $SPLUNK_HOME - skipping download."
 fi
 
 # --- 2. seed admin creds for a non-interactive first start ---
@@ -113,7 +113,7 @@ sudo "$SPLUNK" stop
 sudo "$SPLUNK" enable boot-start -user root || sudo "$SPLUNK" enable boot-start -user root -systemd-managed 1
 sudo "$SPLUNK" start
 
-# --- 6. inputs.conf (OS logs only — no Apache on the internal host) ---
+# --- 6. inputs.conf (OS logs only - no Apache on the internal host) ---
 say "Writing inputs.conf (os only)"
 sudo tee "$SPLUNK_HOME/etc/system/local/inputs.conf" >/dev/null <<EOF
 [monitor:///var/log/auth.log]
@@ -129,7 +129,7 @@ sourcetype = syslog
 index = os
 EOF
 
-# --- 7. auditd file-watch rules (no /var/www/html — no web app here) ---
+# --- 7. auditd file-watch rules (no /var/www/html - no web app here) ---
 # Command execution (execve) is already captured by the baseline cmd_exec/root_cmd_exec
 # rules; we add only file watches and flush+reload to avoid the "Rule exists" abort.
 say "Installing auditd + zeus file-watch rules"
@@ -151,6 +151,6 @@ echo
 echo "============== DONE (internal pivot host) =============="
 sudo "$SPLUNK" list forward-server 2>/dev/null || true
 echo "auditd rules loaded:"
-sudo auditctl -l | grep zeus_ || echo "  (no zeus_ watches — check output above)"
+sudo auditctl -l | grep zeus_ || echo "  (no zeus_ watches - check output above)"
 echo "Verify on Splunk (${SPLUNK_IP}):  index=os host=$(hostname)"
 echo "======================================================="
